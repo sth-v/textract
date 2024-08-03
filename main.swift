@@ -5,11 +5,11 @@ import UniformTypeIdentifiers
 
 func printHelp() {
     let helpText = """
-    textrecognizer: A Swift command line tool for recognizing text in images using macOS's built-in Vision framework.
+    textract: A Swift command line tool for recognizing text in images using macOS's built-in Vision framework.
 
     Usage:
-      textrecognizer <path> [options]
-      textrecognizer --base64-input <base64 image> [options]
+      textract <path> [options]
+      textract --base64-input <base64 image> [options]
 
     Arguments:
       <path>            The path to an image file or a directory containing image files.
@@ -22,22 +22,22 @@ func printHelp() {
 
     Examples:
       1. Process a directory and output recognized text to stdout:
-         ./textrecognizer /path/to/your/images
+         ./textract /path/to/your/images
 
       2. Process a single image file and output recognized text to stdout:
-         ./textrecognizer /path/to/your/image/file
+         ./textract /path/to/your/image/file
 
       3. Process a directory and save recognized text to .txt files:
-         ./textrecognizer /path/to/your/images --file-output
+         ./textract /path/to/your/images --file-output
 
       4. Process a directory, save recognized text to .txt files, and print a report:
-         ./textrecognizer /path/to/your/images --file-output --print-report
+         ./textract /path/to/your/images --file-output --print-report
 
       5. Process a single image file, output recognized text to stdout, and print a report:
-         ./textrecognizer /path/to/your/image/file --print-report
+         ./textract /path/to/your/image/file --print-report
 
       6. Process a base64-encoded image string:
-         ./textrecognizer --base64-input <base64 image>
+         ./textract --base64-input <base64 image>
     """
     print(helpText)
 }
@@ -192,7 +192,7 @@ func main() {
 
     if firstArg == "--base64-input" {
         guard arguments.count >= 3 else {
-            print("Usage: textrecognizer --base64-input <base64 image> [options]")
+            print("Usage: textract --base64-input <base64 image> [options]")
             return
         }
         let base64String = arguments[2]
