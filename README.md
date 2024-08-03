@@ -117,7 +117,7 @@ To build on your own machine, do the following:
     ./textract /path/to/your/image/file --print-report
     ```
 
-6. If you are using a macOS device as a server, a macOS virtual machine, or a [docker container](https://hub.docker.com/r/sickcodes/docker-osx) you may want to call `textract` over a network, for example via the REST API. For this purpose we have implemented the ability to read an image not from a file but from a base64 string, which is passed directly to stdin in the following form:
+6. If you are using a macOS device as a server, a macOS virtual machine, or a [docker container](https://hub.docker.com/r/sickcodes/docker-osx) you may want to call `textract` over a network, for example via the REST API. For this purpose we have implemented the ability to read an image from a base64 string, which is passed directly to stdin in the following form:
 
     ```zsh
     ./textract --base64-input <base64 string>
