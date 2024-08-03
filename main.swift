@@ -3,9 +3,47 @@ import Vision
 import AppKit
 import UniformTypeIdentifiers
 
-func recognizeText(from imageURL: URL) -> String? {
-    guard let image = NSImage(contentsOf: imageURL),
-          let tiffData = image.tiffRepresentation,
+func printHelp() {
+    let helpText = """
+    textrecognizer: A Swift command line tool for recognizing text in images using macOS's built-in Vision framework.
+
+    Usage:
+      textrecognizer <path> [options]
+      textrecognizer --base64-input <base64 image> [options]
+
+    Arguments:
+      <path>            The path to an image file or a directory containing image files.
+      <base64 image>    A base64-encoded string representing an image.
+
+    Options:
+      --file-output      Save recognized text to .txt files with the same base names as the images.
+      --print-report     Print lists of processed and skipped files at the end.
+      -h, --help, ?      Display this help section.
+
+    Examples:
+      1. Process a directory and output recognized text to stdout:
+         ./textrecognizer /path/to/your/images
+
+      2. Process a single image file and output recognized text to stdout:
+         ./textrecognizer /path/to/your/image/file
+
+      3. Process a directory and save recognized text to .txt files:
+         ./textrecognizer /path/to/your/images --file-output
+
+      4. Process a directory, save recognized text to .txt files, and print a report:
+         ./textrecognizer /path/to/your/images --file-output --print-report
+
+      5. Process a single image file, output recognized text to stdout, and print a report:
+         ./textrecognizer /path/to/your/image/file --print-report
+
+      6. Process a base64-encoded image string:
+         ./textrecognizer --base64-input <base64 image>
+    """
+    print(helpText)
+}
+
+func recognizeText(from image: NSImage) -> String? {
+    guard let tiffData = image.tiffRepresentation,
           let ciImage = CIImage(data: tiffData) else {
         return nil
     }
@@ -38,42 +76,131 @@ func isImageFile(url: URL) -> Bool {
     return imageTypes.contains(type)
 }
 
-func processImages(in directory: URL) {
+func processImageFile(_ fileURL: URL, saveToFile: Bool, includeImageFileName:Bool=false) -> (String, Bool) {
+    if let image = NSImage(contentsOf: fileURL), let recognizedText = recognizeText(from: image) {
+        if saveToFile {
+            let textFileURL = fileURL.deletingPathExtension().appendingPathExtension("txt")
+            try? recognizedText.write(to: textFileURL, atomically: true, encoding: .utf8)
+            print("\(textFileURL.path)")
+        } else if includeImageFileName{
+
+            print("\(fileURL.path)\n\(recognizedText)\n")
+        }else{
+            print("\(recognizedText)\n")
+        }
+        return (fileURL.path, true)
+    } else {
+        print("Failed to process \(fileURL.lastPathComponent)")
+        return (fileURL.path, false)
+    }
+}
+
+func processImages(at path: URL, saveToFile: Bool, printReport: Bool) {
     let fileManager = FileManager.default
+    var processedFiles = [String]()
+    var skippedFiles = [String]()
 
-    do {
-        let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+    if fileManager.fileExists(atPath: path.path) {
+        var isDirectory: ObjCBool = false
+        fileManager.fileExists(atPath: path.path, isDirectory: &isDirectory)
 
-        for fileURL in files {
-            if isImageFile(url: fileURL) {
-                if let recognizedText = recognizeText(from: fileURL) {
-                    let textFileURL = fileURL.deletingPathExtension().appendingPathExtension("txt")
-                    try recognizedText.write(to: textFileURL, atomically: true, encoding: .utf8)
-                    print("Processed \(fileURL.lastPathComponent)")
+        if isDirectory.boolValue {
+            do {
+                let files = try fileManager.contentsOfDirectory(at: path, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+                for fileURL in files {
+                    if isImageFile(url: fileURL) {
+                        let (filePath, success) = processImageFile(fileURL, saveToFile: saveToFile, includeImageFileName: true)
+                        if success {
+                            processedFiles.append(filePath)
+                        } else {
+                            skippedFiles.append(filePath)
+                        }
+                    } else {
+                        //print("Skipped non-image file \(fileURL.lastPathComponent)")
+                        skippedFiles.append(fileURL.path)
+                    }
+                }
+            } catch {
+                print("Error processing directory: \(error)")
+            }
+        } else {
+            if isImageFile(url: path) {
+                let (filePath, success) = processImageFile(path, saveToFile: saveToFile)
+                if success {
+                    processedFiles.append(filePath)
                 } else {
-                    print("Failed to process \(fileURL.lastPathComponent)")
+                    skippedFiles.append(filePath)
                 }
             } else {
-                print("Skipped non-image file \(fileURL.lastPathComponent)")
+                //print("The specified file is not an image.")
+                skippedFiles.append(path.path)
             }
         }
-    } catch {
-        print("Error processing images: \(error)")
+    } else {
+        print("The specified path does not exist.")
+    }
+
+    if printReport {
+        print("\nProcessed files:")
+        for file in processedFiles {
+            print(file)
+        }
+
+        print("\nSkipped files:")
+        for file in skippedFiles {
+            print(file)
+        }
+    }
+}
+
+func processBase64Image(_ base64String: String, saveToFile: Bool) {
+    guard let imageData = Data(base64Encoded: base64String), let image = NSImage(data: imageData) else {
+        print("Invalid base64 image data.")
+        return
+    }
+
+    if let recognizedText = recognizeText(from: image) {
+        if saveToFile {
+            let textFileURL = URL(fileURLWithPath: "recognized_text.txt")
+            try? recognizedText.write(to: textFileURL, atomically: true, encoding: .utf8)
+            print("\(textFileURL.path)")
+        } else {
+            print("<base64-input>\n\(recognizedText)\n")
+        }
+    } else {
+        print("Failed to recognize text from base64 image.")
     }
 }
 
 func main() {
     let arguments = CommandLine.arguments
 
-    guard arguments.count == 2 else {
-        print("Usage: textrecognizer <directory_path>")
+    guard arguments.count >= 2 else {
+        printHelp()
         return
     }
 
-    let directoryPath = arguments[1]
-    let directoryURL = URL(fileURLWithPath: directoryPath)
+    let firstArg = arguments[1]
 
-    processImages(in: directoryURL)
+    if ["-h", "--help", "?"].contains(firstArg) {
+        printHelp()
+        return
+    }
+
+    let saveToFile = arguments.contains("--file-output")
+    let printReport = arguments.contains("--print-report")
+
+    if firstArg == "--base64-input" {
+        guard arguments.count >= 3 else {
+            print("Usage: textrecognizer --base64-input <base64 image> [options]")
+            return
+        }
+        let base64String = arguments[2]
+        processBase64Image(base64String, saveToFile: saveToFile)
+    } else {
+        let directoryURL = URL(fileURLWithPath: firstArg)
+        processImages(at: directoryURL, saveToFile: saveToFile, printReport: printReport)
+    }
 }
 
 main()
