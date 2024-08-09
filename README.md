@@ -12,7 +12,6 @@ This application consists of a single `main.swift` file. It only requires swiftc
 
 Text recognition on macOS, iOS, and other Apple systems is done with [Vision Framework](https://developer.apple.com/documentation/vision/), which requires macOS 10.13+.
 
-
 ## Installation
 
 To build on your own machine, do the following:
@@ -38,7 +37,6 @@ To build on your own machine, do the following:
     See ``swiftc --help`` for other options for compilation.
 
     After this operation, an executable file named `textract` will appear in the root folder of the repository. This is the application.
-
 
 4. Run
 
@@ -77,12 +75,14 @@ To build on your own machine, do the following:
     4. Process a directory, save recognised text to .txt files, and print a report:
         ./textract /path/to/your/images --file-output --print-report
 
-    5. Process a single image file, output recognised text to stdout, and print a report:
-        ./textract /path/to/your/image/file --print-report
+    5. Process a single image file, output recognized text to stdout, and print a report:
+         ./textract /path/to/your/image/file --print-report
+      
+    6. Process a single pdf file, output will be in markdown format, will include headings, paragraphs and lists:
+         ./textract /path/to/your/image/file.pdf
 
-    6. Process a base64-encoded image string:
-        ./textract --base64-input <base64 image>
-    ```
+    7. Process a base64-encoded image string:
+         ./textract --base64-input <base64 image>
 
 ## Examples
 
@@ -116,7 +116,13 @@ To build on your own machine, do the following:
     ./textract /path/to/your/image/file --print-report
     ```
 
-6. If you are using a macOS device as a server, a macOS virtual machine, or a [docker container](https://hub.docker.com/r/sickcodes/docker-osx) you may want to call `textract` over a network, for example via the REST API. For this purpose we have implemented the ability to read an image not from a file but from a base64 string, which is passed directly to stdin in the following form:
+6. Process a single pdf file, output will be in markdown format, will include headings, paragraphs and lists:
+
+    ````zsh
+    ./textract /path/to/your/image/file.pdf
+    ```
+
+7. If you are using a macOS device as a server, a macOS virtual machine, or a [docker container](https://hub.docker.com/r/sickcodes/docker-osx) you may want to call `textract` over a network, for example via the REST API. For this purpose we have implemented the ability to read an image not from a file but from a base64 string, which is passed directly to stdin in the following form:
 
     ```zsh
     ./textract --base64-input <base64 string>

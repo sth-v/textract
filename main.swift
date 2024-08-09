@@ -1,6 +1,7 @@
 import Foundation
 import Vision
 import AppKit
+import PDFKit
 import UniformTypeIdentifiers
 
 func printHelp() {
@@ -35,8 +36,11 @@ func printHelp() {
 
       5. Process a single image file, output recognized text to stdout, and print a report:
          ./textract /path/to/your/image/file --print-report
+      
+      6. Process a single pdf file, output will be in markdown format, will include headings, paragraphs and lists:
+         ./textract /path/to/your/image/file.pdf
 
-      6. Process a base64-encoded image string:
+      7. Process a base64-encoded image string:
          ./textract --base64-input <base64 image>
     """
     print(helpText)
@@ -171,7 +175,125 @@ func processBase64Image(_ base64String: String, saveToFile: Bool) {
         print("Failed to recognize text from base64 image.")
     }
 }
+func replace(_ myString: String, _ index: Int, _ newChar: Character) -> String {
+    var chars = Array(myString)     // gets an array of characters
+    chars[index] = newChar
+    let modifiedString = String(chars)
+    return modifiedString
+}
+func startsWithCapitalLetter(_ text: String) -> Bool {
+    guard let firstCharacter = text.first else {
+        return false // The string is empty
+    }
+    return firstCharacter.isUppercase
+}
+func endsWith(_ text: String, _ char:Character) -> Bool {
+    guard let lastCharacter = text.last else {
+        return false // The string is empty
+    }
+    return lastCharacter == char
+}
+func recognizeTextWithStructure(from image: NSImage) -> [(String, String)]? {
+    guard let tiffData = image.tiffRepresentation,
+          let ciImage = CIImage(data: tiffData) else {
+        return nil
+    }
 
+    let requestHandler = VNImageRequestHandler(ciImage: ciImage, options: [:])
+    let request = VNRecognizeTextRequest()
+
+    do {
+        try requestHandler.perform([request])
+        guard let observations = request.results as? [VNRecognizedTextObservation] else {
+            return nil
+        }
+
+        var structuredText: [(String, String)] = []
+
+        for observation in observations {
+            if var recognizedString = observation.topCandidates(1).first?.string {
+                //print("bb: \(observation.boundingBox.height ), \(observation.boundingBox.width ) | \(recognizedString)")
+                // Example classification based on text size (requires more advanced analysis)
+                if (observation.boundingBox.height > 0.021 && startsWithCapitalLetter(recognizedString)){ // Assuming large font size for headings
+                    structuredText.append(("\n\n## \(recognizedString)", "heading"))
+                } else if recognizedString.starts(with: "-") || recognizedString.starts(with: "•") {
+                    recognizedString=replace(recognizedString,0,"-")
+                    structuredText.append((recognizedString, "list"))
+                } else  if endsWith(recognizedString, ".") {
+
+                    structuredText.append((recognizedString+"\n\n", "paragraph"))
+                } else {
+                    structuredText.append((recognizedString+" ", "paragraph"))
+                }
+            }
+        }
+        
+        return structuredText
+    } catch {
+        print("Error recognizing text: \(error)")
+        return nil
+    }
+}
+
+func isPDFFile(url: URL) -> Bool {
+    // Check the file extension
+    if url.pathExtension.lowercased() == "pdf" {
+        return true
+    }
+
+    // Check the MIME type
+    let pdfUTType = UTType.pdf
+    if let fileUTType = UTType(filenameExtension: url.pathExtension) {
+        return fileUTType.conforms(to: pdfUTType)
+    }
+
+    return false
+}
+func renderPDFPageAsImage(_ page: PDFPage) -> NSImage? {
+    let pageRect = page.bounds(for: .mediaBox)
+    let image = NSImage(size: pageRect.size)
+    image.lockFocus()
+    if let context = NSGraphicsContext.current?.cgContext {
+        NSColor.white.set()
+        context.fill(pageRect)
+        page.draw(with: .mediaBox, to: context)
+    }
+    image.unlockFocus()
+    return image
+    }
+func processPDFToMarkdown(_ pdfURL: URL) -> String {
+    guard let pdfDocument = PDFDocument(url: pdfURL) else {
+        print("Failed to open PDF document.")
+        return ""
+    }
+
+    var markdownText = ""
+    
+    for pageIndex in 0..<pdfDocument.pageCount {
+        guard let page = pdfDocument.page(at: pageIndex) else { continue }
+        
+        if let pageImage = renderPDFPageAsImage(page), let structuredText = recognizeTextWithStructure(from: pageImage) {
+            for (text, type) in structuredText {
+                switch type {
+                case "heading":
+                    
+                    markdownText += text + "\n\n"
+                case "list":
+                    markdownText += text + "\n\n"
+                case "paragraph":
+                  
+                    markdownText += text 
+                default:
+                    markdownText += text + "\n"
+                }
+            }
+        } else {
+            print("Failed to recognize text on page \(pageIndex + 1).")
+        }
+    }
+    
+    return markdownText
+}
 func main() {
     let arguments = CommandLine.arguments
 
@@ -197,9 +319,26 @@ func main() {
         }
         let base64String = arguments[2]
         processBase64Image(base64String, saveToFile: saveToFile)
-    } else {
+    } else  {
         let directoryURL = URL(fileURLWithPath: firstArg)
+       if isPDFFile(url: directoryURL) {
+        // Perform PDF analysis
+        let recognizedText = processPDFToMarkdown(directoryURL)
+
+        if saveToFile {
+            let outputFilePath = directoryURL.deletingPathExtension().appendingPathExtension("md")
+            try? recognizedText.write(to: outputFilePath, atomically: true, encoding: .utf8)
+            print("Markdown text saved to \(outputFilePath.path)")
+        } else {
+            print(recognizedText)
+        }
+
+
+        } else{
+            
+
         processImages(at: directoryURL, saveToFile: saveToFile, printReport: printReport)
+        }
     }
 }
 
