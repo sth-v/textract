@@ -26,12 +26,13 @@ To build on your own machine, do the following:
 
     ```zsh
     cd textract
+
     ```
 
 3. Compile the executable
 
     ```zsh
-    swiftc -O main.swift -o textract 
+    swiftc -O main.swift -o textract
     ```
 
     See ``swiftc --help`` for other options for compilation.
@@ -94,25 +95,25 @@ To build on your own machine, do the following:
 
 2. Process a single image file and output recognised text to stdout:
 
-    ````zsh
+    ```zsh
     ./textract /path/to/your/image/file
     ```
 
 3. Process a directory and save recognised text to .txt files:
 
-    ````zsh
+    ```zsh
     ./textract /path/to/your/images --file-output
     ```
 
 4. Process a directory, save recognised text to .txt files, and print a report:
 
-    ````zsh
+    ```zsh
     ./textract /path/to/your/images --file-output --print-report
     ```
 
 5. Process a single image file, output recognised text to stdout, and print a report:
 
-    ````zsh
+    ```zsh
     ./textract /path/to/your/image/file --print-report
     ```
 
@@ -122,7 +123,7 @@ To build on your own machine, do the following:
     ./textract /path/to/your/image/file.pdf
     ```
 
-7. If you are using a macOS device as a server, a macOS virtual machine, or a [docker container](https://hub.docker.com/r/sickcodes/docker-osx) you may want to call `textract` over a network, for example via the REST API. For this purpose we have implemented the ability to read an image not from a file but from a base64 string, which is passed directly to stdin in the following form:
+7. If you are using a macOS device as a server, a macOS virtual machine, or a [docker container](https://hub.docker.com/r/sickcodes/docker-osx) you may want to call `textract` over a network, for example via the REST API. For this purpose we have implemented the ability to read an image from a base64 string, which is passed directly to stdin in the following form:
 
     ```zsh
     ./textract --base64-input <base64 string>
