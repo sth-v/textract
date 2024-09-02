@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+     
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+      
+      - name:  Build the artifact
+        run: swiftc -O main.swift -o textract
+   
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v3.2.1-node20
+        with:
+          # Artifact name
+          name: textract-${{ github.ref_name }}
+          # A file, directory or wildcard pattern that describes what to upload
+          path: textract
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: my-artifact
+          path: artifact.zip
+      - name: Generate Release Notes
+        id: generate_release_notes
+        run: |
+          notes=$(git log $(git describe --tags --abbrev=0)..HEAD --oneline)
+          echo "::set-output name=notes::$notes"
+          
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "Release ${{ github.ref_name }}"
+          body: |
+            Changes in this release:
+            ${{ steps.generate_release_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: textract-${{ github.ref_name }}
+
+      - name: Upload Artifact to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: textract
+          asset_name: textract
+          asset_content_type: application/octet-stream
