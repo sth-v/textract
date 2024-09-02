@@ -36,5 +36,5 @@ jobs:
           # Artifact name
           name: textract-${{steps.extract_branch.outputs.branch}}-${{ github.sha }}
           # A file, directory or wildcard pattern that describes what to upload
-          path: error
+          path: textract
           
