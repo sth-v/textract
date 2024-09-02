@@ -21,15 +21,10 @@ jobs:
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
         id: extract_branch
-   
-      - name: build
+        
+      - name: Build textract executable
         run: swiftc -O main.swift -o textract
-      
-      - name: Artifact name
-        id: artifactname
-        run: |
-          
-          echo "wheelfile=$(ls *.w | head -1)" >> $GITHUB_OUTPUT
+   
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.2.1-node20
         with:
